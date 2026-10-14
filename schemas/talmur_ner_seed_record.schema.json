@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talos.local/schemas/talmur_ner_seed_record.schema.json",
+  "title": "Talmur NER seed record",
+  "type": "object",
+  "required": [
+    "id",
+    "language",
+    "split",
+    "source",
+    "text",
+    "entities"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "language": { "type": "string", "enum": ["it", "en", "fr", "de", "es", "pt"] },
+    "split": { "type": "string", "enum": ["train", "validation", "test"] },
+    "source": {
+      "type": "object",
+      "required": ["kind", "template_id"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["synthetic_seed", "synthetic_generated", "human_annotated", "translated_projected", "public_dataset"] },
+        "template_id": { "type": "string" },
+        "document_type": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "text": { "type": "string", "minLength": 1 },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface", "label", "canonical_entity", "sensitivity", "action"],
+        "additionalProperties": false,
+        "properties": {
+          "surface": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "canonical_entity": { "type": "string", "minLength": 1 },
+          "occurrence": { "type": "integer", "minimum": 1, "default": 1 },
+          "sensitivity": { "type": "string", "enum": ["none", "low", "medium", "high", "critical"] },
+          "action": { "type": "string", "enum": ["keep", "review", "mask"] },
+          "context_tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "record_tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
