@@ -39,10 +39,15 @@ rsync -a --exclude='.git' --exclude='.venv*' --exclude='runs' "$REPO_DIR/" "$SCR
 
 cd "$SCRATCH_RUN"
 
+export HF_HOME="$REPO_DIR/.cache/huggingface"
+export TRANSFORMERS_CACHE="$HF_HOME/transformers"
+export TOKENIZERS_PARALLELISM=false
+
 python3 -m venv .venv-train
 source .venv-train/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-train.txt
+python -m pip check
 
 nvidia-smi || true
 
@@ -51,6 +56,12 @@ if [[ ! -f "$COMPILED_JSONL" ]]; then
   echo "Run sbatch cluster/slurm/prepare_dataset_cpu.sbatch before requesting a GPU training job." >&2
   exit 2
 fi
+
+python training/preflight_training_env.py \
+  --model-name "$MODEL_NAME" \
+  --taxonomy taxonomy/deepmount_italian_ner_xxl_v2.labels.json \
+  --compiled-jsonl "$COMPILED_JSONL" \
+  --min-records 1000
 
 python training/finetune_token_classifier.py \
   --model-name "$MODEL_NAME" \

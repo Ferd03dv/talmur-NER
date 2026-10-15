@@ -72,8 +72,24 @@ Submit:
 ```bash
 sbatch cluster/slurm/prepare_dataset_cpu.sbatch
 sbatch cluster/slurm/validate_seed_cpu.sbatch
+sbatch cluster/slurm/preflight_training_cpu.sbatch
 sbatch cluster/slurm/finetune_minilm_gpu.sbatch
 ```
+
+Run `preflight_training_cpu.sbatch` before every GPU submission. It installs the
+training dependencies, checks `protobuf`/`sentencepiece`, loads the tokenizer,
+loads model config and weights, verifies the compiled dataset, and imports `Trainer` without
+requesting a GPU. Submit the GPU job only after preflight completes successfully.
+
+Preferred guarded submission:
+
+```bash
+RUN_NAME=talos-minilm-ner-v1 TALMUR_NER_REPO=/mnt/beegfs/fdelvecchio/talmur-NER \
+  bash scripts/submit_training_with_preflight.sh
+```
+
+This submits the GPU job with `--dependency=afterok:<preflight-id>`, so the GPU
+training can start only if the CPU preflight succeeds.
 
 Monitor:
 

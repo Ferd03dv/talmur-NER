@@ -90,6 +90,28 @@ RUN_NAME=minilm-l12-v1 MODEL_NAME=microsoft/Multilingual-MiniLM-L12-H384 EPOCHS=
 
 The GPU job expects `data/compiled/train.seed.all.compiled.jsonl` to exist. Run `prepare_dataset_cpu.sbatch` before submitting the GPU job.
 
+## Preflight Before GPU Queue
+
+Before waiting for a GPU allocation, run the CPU preflight job:
+
+```bash
+sbatch cluster/slurm/preflight_training_cpu.sbatch
+```
+
+It checks dependencies (`protobuf`, `sentencepiece`, `torch`, `transformers`),
+loads the tokenizer/config/model weights, imports `Trainer`, and validates the compiled
+dataset. Only submit the GPU job after this succeeds.
+
+Preferred guarded submission:
+
+```bash
+RUN_NAME=talos-minilm-ner-v1 TALMUR_NER_REPO=/mnt/beegfs/fdelvecchio/talmur-NER \
+  bash scripts/submit_training_with_preflight.sh
+```
+
+The GPU job is submitted with an `afterok` dependency on the preflight job. If
+preflight fails, GPU training does not start.
+
 ## Evaluate A Saved Model
 
 ```bash

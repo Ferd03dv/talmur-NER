@@ -164,14 +164,9 @@ def main() -> int:
         records = load_compiled_records(args.train_jsonl, taxonomy)
     dataset = split_dataset(records)
 
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name, use_fast=True)
-    except ImportError:
-        raise
-    except Exception as exc:
-        print(f"fast tokenizer load failed for {args.model_name}: {exc}")
-        print("retrying with use_fast=False")
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name, use_fast=True)
+    if not getattr(tokenizer, "is_fast", False):
+        raise RuntimeError("fast tokenizer is required because token/entity alignment needs offset_mapping")
     tokenized = dataset.map(
         lambda batch: tokenize_and_align(batch, tokenizer, label2id, args.max_length),
         batched=True,
