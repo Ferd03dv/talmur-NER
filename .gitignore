@@ -1,0 +1,24 @@
+# Local Python environments and interpreter caches
+.venv/
+.venv-*/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local model exports, checkpoints, benchmark output, and transferred archives
+artifacts/
+runs/
+*.tar.gz
+*.safetensors
+*.onnx
+
+# Regenerable OpenPII import and V2 derived training datasets.
+# Keep small curated seeds and reviewed gold data under version control.
+data/openpii/
+data/generated/precision.*.jsonl
+data/generated/*openpii*.jsonl
+data/compiled/precision.*.jsonl
+data/compiled/*openpii*.jsonl
+
+# Temporary transfer/import logs
+*.log
