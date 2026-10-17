@@ -92,13 +92,17 @@ python training/generate_multilingual_precision_augmentation.py \
   --output data/generated/precision.multilingual.v1.jsonl
 ```
 
-It contains 31,200 records: 15,600 contextual positives and 15,600 O-only hard
+It contains 36,000 records: 18,000 contextual positives and 18,000 O-only hard
 negatives, balanced across six languages and these 13 labels: `CVV`,
 `DOSAGGIO`, `DURATION`, `FREQUENZA`, `MALATTIA`, `MEDICINA`, `ORARIO`,
 `PASSWORD`, `PIN`, `PROFESSIONE`, `STATO`, `STATO_CIVILE`, and
 `TARGA_VEICOLO`. The hard negatives intentionally have an empty `entities`
 array. This matters: the current NER trainer treats an entity marked
 `action=keep` as a positive NER span, so `keep` cannot reduce false positives.
+It also includes 400 paired `MEDICINA`/`MALATTIA` clinical contrasts per
+language: the positive record contains both a diagnosis and its prescribed
+medicine, while the matched educational-text record labels neither. This is
+intentional supervision for the medication-versus-disease boundary.
 
 The checked-in V2 preparation uses a deterministic balanced 60,000-record
 snapshot (10,000 per language) from the downloaded train checkpoint, reserving

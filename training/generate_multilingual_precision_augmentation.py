@@ -150,6 +150,37 @@ NEGATIVE = {
     "pt": {"CVV": "O guia explica que CVV é uma sigla de pagamento sem indicar códigos.", "DOSAGGIO": "A caixa pesa 500 g e não contém instruções terapêuticas.", "DURATION": "O projeto editorial dura trinta dias sem dados de saúde.", "FREQUENZA": "A reunião da equipa repete-se a cada oito horas durante o teste.", "MALATTIA": "O curso universitário aborda a hipertensão como tema de saúde pública.", "MEDICINA": "O título do artigo cita Metformin numa bibliografia científica.", "ORARIO": "O comboio parte às 08:30 segundo o horário público.", "PASSWORD": "O guia define a palavra palavra-passe sem fornecer credenciais.", "PIN": "O teclado tem uma tecla PIN, mas nenhum código pessoal.", "PROFESSIONE": "O texto descreve a profissão médica em geral.", "STATO": "A França é membro da União Europeia.", "STATO_CIVILE": "O questionário estatístico contém um campo de estado civil sem dados pessoais.", "TARGA_VEICOLO": "O regulamento explica onde encontrar a matrícula de um veículo."},
 }
 
+# A token classifier learns the MEDICINA/MALATTIA boundary far more reliably
+# when both concepts occur in the *same* clinical context.  The paired
+# negatives retain the words but remove the patient-specific context, teaching
+# the intended masking policy rather than a simplistic lexical association.
+CLINICAL_CONTRAST = {
+    "it": (
+        "Diagnosi del paziente: {disease}. Terapia prescritta: {medicine}.",
+        "L'articolo confronta {disease} e {medicine} in una rassegna scientifica generale.",
+    ),
+    "en": (
+        "Patient diagnosis: {disease}. Prescribed medication: {medicine}.",
+        "The article compares {disease} and {medicine} in a general scientific review.",
+    ),
+    "fr": (
+        "Diagnostic du patient : {disease}. Médicament prescrit : {medicine}.",
+        "L'article compare {disease} et {medicine} dans une revue scientifique générale.",
+    ),
+    "de": (
+        "Patientendiagnose: {disease}. Verordnetes Medikament: {medicine}.",
+        "Der Artikel vergleicht {disease} und {medicine} in einer allgemeinen wissenschaftlichen Übersicht.",
+    ),
+    "es": (
+        "Diagnóstico del paciente: {disease}. Medicamento recetado: {medicine}.",
+        "El artículo compara {disease} y {medicine} en una revisión científica general.",
+    ),
+    "pt": (
+        "Diagnóstico do paciente: {disease}. Medicamento prescrito: {medicine}.",
+        "O artigo compara {disease} e {medicine} numa revisão científica geral.",
+    ),
+}
+
 
 def split_for(index: int, validation_ratio: float) -> str:
     return "validation" if index % round(1 / validation_ratio) == 0 else "train"
@@ -181,16 +212,43 @@ def negative_record(lang: str, label: str, index: int, validation_ratio: float) 
     }
 
 
+def clinical_contrast_records(lang: str, index: int, rng: random.Random, validation_ratio: float) -> tuple[dict, dict]:
+    disease = VALUES["MALATTIA"](rng, lang)
+    medicine = VALUES["MEDICINA"](rng, lang)
+    positive_template, negative_template = CLINICAL_CONTRAST[lang]
+    positive_text = positive_template.format(disease=disease, medicine=medicine)
+    negative_text = negative_template.format(disease=disease, medicine=medicine)
+    split = split_for(index, validation_ratio)
+    positive = {
+        "id": f"precision-{lang}-clinical-contrast-positive-{index:06d}", "language": lang, "split": split,
+        "source": {"kind": "synthetic_generated", "template_id": "clinical_contrast_positive_v1", "document_type": "clinical_record", "notes": "Paired MEDICINA/MALATTIA supervision."},
+        "text": positive_text,
+        "entities": [
+            {"surface": disease, "label": "MALATTIA", "canonical_entity": CANONICAL["MALATTIA"], "sensitivity": "high", "action": "mask", "context_tags": ["clinical_contrast", "diagnosis"]},
+            {"surface": medicine, "label": "MEDICINA", "canonical_entity": CANONICAL["MEDICINA"], "sensitivity": "high", "action": "mask", "context_tags": ["clinical_contrast", "prescription"]},
+        ],
+        "record_tags": ["precision_augmentation_v1", "clinical_contrast", "positive", lang],
+    }
+    negative = {
+        "id": f"precision-{lang}-clinical-contrast-negative-{index:06d}", "language": lang, "split": split,
+        "source": {"kind": "synthetic_generated", "template_id": "clinical_contrast_negative_v1", "document_type": "medical_education", "notes": "O-only contrast: not a patient record and not redacted."},
+        "text": negative_text, "entities": [],
+        "record_tags": ["precision_augmentation_v1", "clinical_contrast", "hard_negative", lang],
+    }
+    return positive, negative
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--languages", default="it,en,fr,de,es,pt")
     parser.add_argument("--positive-per-label", type=int, default=200)
     parser.add_argument("--negative-per-label", type=int, default=200)
+    parser.add_argument("--clinical-contrast-pairs", type=int, default=400)
     parser.add_argument("--validation-ratio", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=20261017)
     args = parser.parse_args()
-    if min(args.positive_per_label, args.negative_per_label) < 1 or not 0 < args.validation_ratio < 1:
+    if min(args.positive_per_label, args.negative_per_label, args.clinical_contrast_pairs) < 1 or not 0 < args.validation_ratio < 1:
         raise SystemExit("example counts must be positive and validation ratio must be between 0 and 1")
     languages = tuple(item.strip() for item in args.languages.split(",") if item.strip())
     unknown = set(languages) - set(POSITIVE)
@@ -211,8 +269,14 @@ def main() -> int:
                     record = negative_record(lang, label, i, args.validation_ratio)
                     out.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
                     count += 1
+            for i in range(1, args.clinical_contrast_pairs + 1):
+                positive, negative = clinical_contrast_records(lang, i, rng, args.validation_ratio)
+                out.write(json.dumps(positive, ensure_ascii=False, separators=(",", ":")) + "\n")
+                out.write(json.dumps(negative, ensure_ascii=False, separators=(",", ":")) + "\n")
+                count += 2
     print(f"wrote {count} records to {args.output}")
-    print(f"per language: {len(TARGET_LABELS) * (args.positive_per_label + args.negative_per_label)}; labels: {len(TARGET_LABELS)}")
+    per_language = len(TARGET_LABELS) * (args.positive_per_label + args.negative_per_label) + (2 * args.clinical_contrast_pairs)
+    print(f"per language: {per_language}; labels: {len(TARGET_LABELS)}; clinical contrast pairs: {args.clinical_contrast_pairs}")
     return 0
 
 
