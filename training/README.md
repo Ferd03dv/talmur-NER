@@ -104,6 +104,38 @@ language: the positive record contains both a diagnosis and its prescribed
 medicine, while the matched educational-text record labels neither. This is
 intentional supervision for the medication-versus-disease boundary.
 
+### Document error-driven augmentation (Italian)
+
+The supplied CV, billing and business-plan reviews exposed a different failure
+mode: document headings produced false `LUOGO` spans while CV-style titles and
+surnames were missed. Generate the corrective corpus with:
+
+```bash
+python training/generate_document_error_augmentation.py \
+  --output data/generated/document-error.it.v1.jsonl
+```
+
+It writes 3,600 fictitious Italian records (1:1 positive/O-only hard-negative
+ratio) for three document-specific families: `DATA` variants such as `FEB 2026`
+and `02/26`; paired `PROFESSIONE` + `COGNOME` titles such as `Avv. Rossi`; and
+clear `LUOGO` positives balanced against business/billing headings that must
+remain `O`. It contains no text or values copied from evaluation documents.
+Merge it into the next training source after the OpenPII snapshot and compile
+the merged file as usual:
+
+```bash
+python training/merge_jsonl.py \
+  --output data/generated/train.openpii-precision-document.v2.jsonl \
+  data/openpii/openpii.v1.balanced.jsonl \
+  data/generated/precision.multilingual.v1.jsonl \
+  data/generated/document-error.it.v1.jsonl
+
+python training/compile_jsonl_to_bio.py \
+  --taxonomy taxonomy/deepmount_italian_ner_xxl_v2.labels.json \
+  --input data/generated/train.openpii-precision-document.v2.jsonl \
+  --output data/compiled/train.openpii-precision-document.v2.compiled.jsonl
+```
+
 The checked-in V2 preparation uses a deterministic balanced 60,000-record
 snapshot (10,000 per language) from the downloaded train checkpoint, reserving
 10% for validation. This is intentionally a *development* validation set, not
