@@ -96,6 +96,8 @@ NEGATIVE = {
     "pt": ("Não foi solicitado nenhum código de verificação.", "O documento descreve um procedimento geral.", "O campo fica vazio nesta cópia."),
 }
 
+REFERENCE = {"it": "Riferimento", "en": "Reference", "fr": "Référence", "de": "Referenz", "es": "Referencia", "pt": "Referência"}
+
 VALUES = {
     "CVV": ("042", "718", "905"), "DOSAGGIO": ("375 mg", "1,5 ml", "2 compresse"),
     "DURATION": ("undici giorni", "tre settimane", "48 ore"), "FREQUENZA": ("ogni otto ore", "due volte al giorno", "la sera"),
@@ -142,7 +144,7 @@ def main() -> int:
             for index in range(half):
                 value = rng.choice(VALUES[label])
                 rows.append(record(f"gold-{language}-{label.lower()}-positive-{index + 1:03d}", language, POSITIVE[language][label].format(value=value), [entity(value, label)], label, "positive", args.seed))
-                negative = f"{rng.choice(NEGATIVE[language])} Riferimento {label}-{index + 1:03d}."
+                negative = f"{rng.choice(NEGATIVE[language])} {REFERENCE[language]} {label}-{index + 1:03d}."
                 rows.append(record(f"gold-{language}-{label.lower()}-negative-{index + 1:03d}", language, negative, [], label, "hard_negative", args.seed))
     rng.shuffle(rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
