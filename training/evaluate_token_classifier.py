@@ -21,6 +21,7 @@ def main() -> int:
     parser.add_argument("--taxonomy", required=True, type=Path)
     parser.add_argument("--jsonl", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--split", help="Evaluate only records with this split value")
     parser.add_argument("--max-length", type=int, default=512)
     args = parser.parse_args()
 
@@ -29,7 +30,13 @@ def main() -> int:
     id2label = {i: label for i, label in enumerate(labels)}
     allowed = set(taxonomy["labels"])
 
-    records = [compile_record(record, allowed) for _, record in iter_jsonl(args.jsonl)]
+    records = [
+        compile_record(record, allowed)
+        for _, record in iter_jsonl(args.jsonl)
+        if not args.split or record.get("split") == args.split
+    ]
+    if not records:
+        raise SystemExit("no records selected")
     dataset = Dataset.from_list(records)
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True)

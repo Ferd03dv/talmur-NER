@@ -144,7 +144,9 @@ def main() -> int:
             for index in range(half):
                 value = rng.choice(VALUES[label])
                 rows.append(record(f"gold-{language}-{label.lower()}-positive-{index + 1:03d}", language, POSITIVE[language][label].format(value=value), [entity(value, label)], label, "positive", args.seed))
-                negative = f"{rng.choice(NEGATIVE[language])} {REFERENCE[language]} {label}-{index + 1:03d}."
+                # Never include the label name in a negative: doing so would
+                # turn an evaluation hard-negative into a label-word cue.
+                negative = f"{rng.choice(NEGATIVE[language])} {REFERENCE[language]} {index + 1:05d}."
                 rows.append(record(f"gold-{language}-{label.lower()}-negative-{index + 1:03d}", language, negative, [], label, "hard_negative", args.seed))
     rng.shuffle(rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)

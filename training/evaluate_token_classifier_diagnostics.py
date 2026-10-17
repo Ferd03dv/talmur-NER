@@ -27,6 +27,7 @@ def main() -> int:
     parser.add_argument("--jsonl", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--language", help="Evaluate only this ISO language code")
+    parser.add_argument("--split", help="Evaluate only records with this split value")
     parser.add_argument("--labels", help="Comma-separated base labels to score; other predictions become O")
     parser.add_argument("--max-length", type=int, default=512)
     parser.add_argument("--batch-size", type=int, default=16)
@@ -41,12 +42,14 @@ def main() -> int:
     for _, source in iter_jsonl(args.jsonl):
         if args.language and source.get("language") != args.language:
             continue
+        if args.split and source.get("split") != args.split:
+            continue
         records.append(compile_record(source, allowed))
     if not records:
         raise SystemExit("no records selected")
 
     dataset = Dataset.from_list(records)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True, fix_mistral_regex=True)
     model = AutoModelForTokenClassification.from_pretrained(args.model_dir)
     tokenized = dataset.map(
         lambda batch: tokenize_and_align(batch, tokenizer, label2id, args.max_length),
