@@ -49,7 +49,7 @@ def main() -> int:
         raise SystemExit("no records selected")
 
     dataset = Dataset.from_list(records)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True, fix_mistral_regex=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_dir, use_fast=True)
     model = AutoModelForTokenClassification.from_pretrained(args.model_dir)
     tokenized = dataset.map(
         lambda batch: tokenize_and_align(batch, tokenizer, label2id, args.max_length),
@@ -90,8 +90,14 @@ def main() -> int:
         "per_label": {name.removeprefix("B-"): {"precision": value["precision"], "recall": value["recall"], "f1": value["f1-score"], "support": value["support"]} for name, value in report.items()},
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    def json_default(value):
+        if isinstance(value, np.generic):
+            return value.item()
+        raise TypeError(f"not JSON serializable: {type(value).__name__}")
+
+    rendered = json.dumps(result, ensure_ascii=False, indent=2, default=json_default)
+    args.output.write_text(rendered + "\n", encoding="utf-8")
+    print(rendered)
     return 0
 
 
