@@ -136,6 +136,35 @@ python training/compile_jsonl_to_bio.py \
   --output data/compiled/train.openpii-precision-document.v2.compiled.jsonl
 ```
 
+### Health and identity augmentation (Italian V2)
+
+For the clinical entities exposed by the product taxonomy, and for registry
+name order (`NOME COGNOME` as well as `COGNOME NOME`), generate the focused
+Italian set with:
+
+```bash
+python training/generate_italian_health_identity_augmentation.py \
+  --output data/generated/health-identity.it.v2.jsonl
+
+python training/compile_jsonl_to_bio.py \
+  --taxonomy taxonomy/deepmount_italian_ner_xxl_v2.labels.json \
+  --input data/generated/health-identity.it.v2.jsonl \
+  --output data/compiled/health-identity.it.v2.compiled.jsonl
+```
+
+The default is 3,000 fictitious records (about 86% train / 14% validation):
+2,200 positives and 800 O-only hard negatives. It covers `NOME`, `COGNOME`,
+`MALATTIA`, `MEDICINA`, `DOSAGGIO`, `FORM`, `STRENGTH`, `DURATION`,
+`FREQUENZA`, and `CARTELLA_CLINICA`. The dedicated name fixtures include
+`Marco Visione`, `Visione Marco`, `VISIONE MARCO`, and `Visione, Marco`.
+
+The negatives deliberately leave diseases or medicines in bibliographic,
+technical, operational, or administrative prose unannotated. Keep them only
+when the product policy is to mask patient-specific clinical data rather than
+every generic mention of health terminology. Merge this augmentation with the
+licensed/base source before a new training run; it is targeted supervision, not
+a substitute for a clinical corpus or a human-held-out gold set.
+
 The checked-in V2 preparation uses a deterministic balanced 60,000-record
 snapshot (10,000 per language) from the downloaded train checkpoint, reserving
 10% for validation. This is intentionally a *development* validation set, not

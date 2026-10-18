@@ -19,6 +19,8 @@ data/generated/precision.*.jsonl
 data/generated/*openpii*.jsonl
 data/compiled/precision.*.jsonl
 data/compiled/*openpii*.jsonl
+data/generated/health-identity.*.jsonl
+data/compiled/health-identity.*.jsonl
 
 # Temporary transfer/import logs
 *.log
